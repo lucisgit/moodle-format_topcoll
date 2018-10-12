@@ -862,8 +862,9 @@ class format_topcoll_renderer extends format_section_renderer_base {
         if (empty($this->tcsettings)) {
             $this->tcsettings = $this->courseformat->get_settings();
         }
-
         $context = context_course::instance($course->id);
+        $caninsertsections = $this->userisediting && has_capability('moodle/course:movesections', $context);
+
         // Title with completion help icon.
         $completioninfo = new completion_info($course);
         echo $completioninfo->display_help_icon();
@@ -886,6 +887,9 @@ class format_topcoll_renderer extends format_section_renderer_base {
             echo $this->section_header($thissection, $course, false, 0);
             echo $this->courserenderer->course_section_cm_list($course, $thissection, 0);
             echo $this->courserenderer->course_section_add_cm_control($course, $thissection->section, 0);
+            if ($caninsertsections) {
+                echo $this->change_number_sections($course, 1, 1);
+            }
             echo $this->topcoll_section_footer($thissection, $course, false, 0);
         }
 
@@ -1113,6 +1117,9 @@ class format_topcoll_renderer extends format_section_renderer_base {
                         echo $this->courserenderer->course_section_add_cm_control($course, $thissection->section, 0);
                     }
                     echo html_writer::end_tag('div');
+                    if ($caninsertsections) {
+                        echo $this->change_number_sections($course, $thissection->section + 1, $thissection->section + 1);
+                    }
                     echo $this->topcoll_section_footer($thissection, $course, false, 0);
                 }
 
@@ -1169,7 +1176,9 @@ class format_topcoll_renderer extends format_section_renderer_base {
                 echo $this->topcoll_stealth_section_footer($section);
             }
 
-            $changenumsections = $this->change_number_sections($course, 0);
+            if (!$caninsertsections) {
+                $changenumsections = $this->change_number_sections($course, 0, 0);
+            }
         }
         echo $this->end_section_list();
         if ($coursenumsections > 0) {
