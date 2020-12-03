@@ -388,7 +388,6 @@ class format_topcoll extends format_base {
      */
     public function course_format_options($foreditform = false) {
         static $courseformatoptions = false;
-        $courseconfig = null;
         $enabledplugins = array();
         $engagementactivities = array('assign', 'quiz', 'choice', 'feedback', 'lesson', 'data');
         foreach ($engagementactivities as $plugintype) {
@@ -413,20 +412,7 @@ class format_topcoll extends format_base {
         }
         if ($courseformatoptions === false) {
             $courseconfig = get_config('moodlecourse');
-
-            $courseid = $this->get_courseid();
-            if ($courseid == 1) { // New course.
-                 $defaultnumsections = $courseconfig->numsections;
-            } else { // Existing course that may not have 'numsections' - see get_last_section().
-                global $DB;
-                $defaultnumsections = $DB->get_field_sql('SELECT max(section) from {course_sections}
-                    WHERE course = ?', array($courseid));
-            }
             $courseformatoptions = array(
-                'numsections' => array(
-                    'default' => $defaultnumsections,
-                    'type' => PARAM_INT,
-                ),
                 'hiddensections' => array(
                     'default' => $courseconfig->hiddensections,
                     'type' => PARAM_INT,
@@ -548,13 +534,6 @@ class format_topcoll extends format_base {
 
             $context = $this->get_context();
 
-            if (is_null($courseconfig)) {
-                $courseconfig = get_config('moodlecourse');
-            }
-            $sectionmenu = array();
-            for ($i = 0; $i <= $courseconfig->maxsections; $i++) {
-                $sectionmenu[$i] = "$i";
-            }
             $displayinstructionsvalues = $this->generate_default_entry(
                 'displayinstructions',
                 0,
@@ -564,11 +543,6 @@ class format_topcoll extends format_base {
                 )
             );
             $courseformatoptionsedit = array(
-                'numsections' => array(
-                    'label' => new lang_string('numbersections', 'format_topcoll'),
-                    'element_type' => 'select',
-                    'element_attributes' => array($sectionmenu),
-                ),
                 'hiddensections' => array(
                     'label' => new lang_string('hiddensections'),
                     'help' => 'hiddensections',
@@ -1021,6 +995,20 @@ class format_topcoll extends format_base {
                                              'MoodleQuickForm_tccolourpopup');
 
         $elements = parent::create_edit_form_elements($mform, $forsection);
+        if (!$forsection && (empty($COURSE->id) || $COURSE->id == SITEID)) {
+            /* Add "numsections" element to the create course form - it will force new course to be prepopulated
+               with empty sections.
+               The "Number of sections" option is no longer available when editing course, instead teachers should
+               delete and add sections when needed. */
+            $courseconfig = get_config('moodlecourse');
+            $max = (int)$courseconfig->maxsections;
+            $element = $mform->addElement('select', 'numsections', get_string('numberweeks'), range(0, $max ?: 52));
+            $mform->setType('numsections', PARAM_INT);
+            if (is_null($mform->getElementValue('numsections'))) {
+                $mform->setDefault('numsections', $courseconfig->numsections);
+            }
+            array_unshift($elements, $element);
+        }
 
         $context = $this->get_context();
 
